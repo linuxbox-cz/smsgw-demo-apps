@@ -3,11 +3,13 @@
 // identifikace Business Application
 define('BAID', 'demo');
 // klientsky certifikat slouzici pro autentizaci
-define('CERT', 'demo.pem');
+define('CERT', dirname(__FILE__) . '/demo.pem');
 // certifikat autority RapidSSL, ktera vydala serverovy certifikat
 define('CACERT', 'geotrust.crt');
 // URL adresa HTTP GET/POST API (LinuxBox.cz SMS brana)
 define('URL', 'https://www.ipsms.cz:8443/smsconnector/getpost/GP');
+// poslat testovaci SMS - nejdrive zmente cilove cislo
+define('SEND_SMS', false);
 
 
 function smsgw($action = 'ping', $data = null) {
@@ -31,6 +33,10 @@ function smsgw($action = 'ping', $data = null) {
 	curl_setopt($ch, CURLOPT_SSLCERT, CERT);
 
 	$response = curl_exec($ch);
+	if ($response === false) {
+		echo 'Connection error: ' . curl_error($ch) . "\n";
+		return null;
+	}
 
 	$output = array();
 	$arr = explode("\n", $response);
@@ -43,7 +49,7 @@ function smsgw($action = 'ping', $data = null) {
 	}
 
 	curl_close($ch);
-	
+
 	return $output;
 }
 
@@ -61,27 +67,29 @@ if ($result['code'] !== 'ISUC_000') {
 	exit();
 }
 
-// send - poslani SMS
-$data = array(
-	// cilove cislo
-	'toNumber'       => '+420734468595',
-	// text SMS
-	'text'           => 'Server LinuxBox je určen společnostem libovolné velikosti s různorodými potřebami, kterým se dokáže snadno přizpůsobit. Jedná se o komplexní řešení s vysokou úrovní servisní podpory, která je jednou z klíčových filozofií společnosti LinuxBox.cz.',
-	// standardni SMS
-	'intruder'       => false,
-	// s dorucenkou
-	'deliveryReport' => true,
-	// delsi SMS se rozdeli na vice casti
-	'multipart'      => true
-);
-$result = smsgw('send', $data);
-echo "<h2>send</h2>\n";
-echo "<pre>\n";
-print_r($result);
-echo "</pre>\n";
-if ($result['code'] !== 'ISUC_001') {
-	echo "<strong>ERROR: " . $result['description'] . "</strong>\n";
-	exit();
+if (SEND_SMS === true) {
+	// send - poslani SMS
+	$data = array(
+		// cilove cislo
+		'toNumber'       => '+420123456789',
+		// text SMS
+		'text'           => 'Server LinuxBox je určen společnostem libovolné velikosti s různorodými potřebami, kterým se dokáže snadno přizpůsobit. Jedná se o komplexní řešení s vysokou úrovní servisní podpory, která je jednou z klíčových filozofií společnosti LinuxBox.cz.',
+		// standardni SMS
+		'intruder'       => false,
+		// s dorucenkou
+		'deliveryReport' => true,
+		// delsi SMS se rozdeli na vice casti
+		'multipart'      => true
+	);
+	$result = smsgw('send', $data);
+	echo "<h2>send</h2>\n";
+	echo "<pre>\n";
+	print_r($result);
+	echo "</pre>\n";
+	if ($result['code'] !== 'ISUC_001') {
+		echo "<strong>ERROR: " . $result['description'] . "</strong>\n";
+		exit();
+	}
 }
 
 while (true) {
@@ -104,9 +112,9 @@ while (true) {
 		echo "<strong>Prichozi SMS od " . $result['fromNumber'] .
 			", text zpravy: " . $result['text'] . "</strong>\n";
 	}
-			
+
 	// confirm - potvrzeni, ze byla zprava systemem zpracovana
-	// a muze se pri pristim volani receive zobrazit dalsi zprava v poradi 
+	// a muze se pri pristim volani receive zobrazit dalsi zprava v poradi
 	$data = array(
 		'refMsgID' => $result['msgID'],
 		'refBaID'  => $result['baID']
